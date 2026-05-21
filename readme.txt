@@ -1,12 +1,13 @@
-=== Software License Manager ===
-Contributors: Tips and Tricks HQ, Ruhul Amin
-Donate link: https://www.tipsandtricks-hq.com/software-license-manager-plugin-for-wordpress
+=== MCOD Software License Manager ===
+Contributors: crleguizamon
+Donate link: https://mcodform.com/
 Tags: license key, serial key, manager, license, serial, key, selling, sell, license activation, manage license, software license, software license manager
 Requires at least: 5.0
-Tested up to: 6.7
-Stable tag: 4.5.8
-Requires PHP: 7.4.0
-License: GPLv2 or later
+Tested up to: 7.0
+Stable tag: 1.0.0
+Requires PHP: 7.4
+License: GPLv3
+
 
 Create and manage license keys for your software applications easily
 
