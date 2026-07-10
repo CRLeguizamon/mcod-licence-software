@@ -1,11 +1,12 @@
 <?php
 /*
-Plugin Name: Software License Manager
-Version: 4.5.8
-Plugin URI: https://www.tipsandtricks-hq.com/software-license-manager-plugin-for-wordpress
-Author: Tips and Tricks HQ
-Author URI: https://www.tipsandtricks-hq.com/
-Description: Software license management solution for your web applications (WordPress plugins, Themes, PHP based membership script etc.)
+ * Plugin Name: Software License Manager
+ * Description: Software license management solution for your web applications (WordPress plugins, Themes, PHP based membership script etc.)
+ * Version: 1.1.1
+ * Author: crleguizamon
+ * Author URI: https://mcodform.com/
+ * Requires PHP: 8.0
+ * License: GPLv3
 */
 
 if ( ! defined( 'ABSPATH' ) ) {

@@ -15,8 +15,12 @@ require_once 'includes/slm-utility.php';
 require_once 'includes/slm-init-time-tasks.php';
 require_once 'includes/slm-api-utility.php';
 require_once 'includes/slm-api-listener.php';
-require_once 'includes/slm-third-party-integration.php';
+require_once 'includes/mcrpd-shortcodes.php';
 require_once 'includes/mcrpd-project-cpt.php';
+require_once 'includes/mcrpd-project-releases.php';
+require_once 'includes/mcrpd-update-api.php';
+require_once 'includes/mcrpd-email-template.php';
+
 //Include admin side only files
 if ( is_admin() ) {
 	include_once 'menu/slm-admin-init.php';
@@ -31,12 +35,12 @@ add_action( 'admin_enqueue_scripts', 'mcrpd_enqueue_admin_assets' );
 add_action( 'plugins_loaded', 'mcrpd_maybe_load_wc_integration' );
 function mcrpd_maybe_load_wc_integration() {
     if ( class_exists( 'WC_Subscriptions' ) ) {
-        $options = get_option( 'slm_plugin_options' );
-        if ( ! empty( $options['mcrpd_wc_enable'] ) ) {
-            require_once WP_LICENSE_MANAGER_PATH . 'includes/mcrpd-wc-subscriptions-admin.php';
-        }
+        require_once WP_LICENSE_MANAGER_PATH . 'includes/mcrpd-wc-subscriptions-admin.php';
+        require_once WP_LICENSE_MANAGER_PATH . 'includes/mcrpd-wc-subscriptions-listener.php';
+        require_once WP_LICENSE_MANAGER_PATH . 'includes/mcrpd-wc-myaccount.php';
     }
 }
+
 
 add_action( 'wp_enqueue_scripts', 'mcrpd_enqueue_frontend_assets' );
 function mcrpd_enqueue_frontend_assets() {
