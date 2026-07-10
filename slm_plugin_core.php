@@ -27,9 +27,28 @@ add_action( 'init', 'slm_init_handler' );
 add_action( 'plugins_loaded', 'slm_plugins_loaded_handler' );
 add_action( 'admin_enqueue_scripts', 'mcrpd_enqueue_admin_assets' );
 
+// WooCommerce Subscriptions Integration
+add_action( 'plugins_loaded', 'mcrpd_maybe_load_wc_integration' );
+function mcrpd_maybe_load_wc_integration() {
+    if ( class_exists( 'WC_Subscriptions' ) ) {
+        $options = get_option( 'slm_plugin_options' );
+        if ( ! empty( $options['mcrpd_wc_enable'] ) ) {
+            require_once WP_LICENSE_MANAGER_PATH . 'includes/mcrpd-wc-subscriptions-admin.php';
+        }
+    }
+}
+
+add_action( 'wp_enqueue_scripts', 'mcrpd_enqueue_frontend_assets' );
+function mcrpd_enqueue_frontend_assets() {
+	if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'mcrpd-licenses' ) ) {
+		wp_enqueue_style( 'mcrpd-frontend-css', WP_LICENSE_MANAGER_URL . '/css/mcrpd-frontend.css', array(), WP_LICENSE_MANAGER_VERSION );
+		wp_enqueue_script( 'mcrpd-frontend-js', WP_LICENSE_MANAGER_URL . '/js/mcrpd-frontend.js', array(), WP_LICENSE_MANAGER_VERSION, true );
+	}
+}
+
 function mcrpd_enqueue_admin_assets( $hook ) {
 	// Only load on our plugin pages
-	if ( strpos( $hook, 'slm-main' ) === false && strpos( $hook, 'wp_lic_mgr_' ) === false ) {
+	if ( strpos( $hook, 'slm-main' ) === false && strpos( $hook, 'wp_lic_mgr_' ) === false && strpos( $hook, 'mcrpd_emails_menu' ) === false && strpos( $hook, 'lic_mgr_integration_help_page' ) === false ) {
 		return;
 	}
 	

@@ -1,12 +1,11 @@
 <?php
 /*
-Plugin Name: MCOD Software License Manager
-Version: 1.0.0
-Author: crleguizamon
-Author URI: https://mcodform.com/
-Requires PHP: 7.4
-Requires at least: 5.0
-License: GPLv3
+Plugin Name: Software License Manager
+Version: 4.5.8
+Plugin URI: https://www.tipsandtricks-hq.com/software-license-manager-plugin-for-wordpress
+Author: Tips and Tricks HQ
+Author URI: https://www.tipsandtricks-hq.com/
+Description: Software license management solution for your web applications (WordPress plugins, Themes, PHP based membership script etc.)
 */
 
 if ( ! defined( 'ABSPATH' ) ) {
