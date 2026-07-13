@@ -11,6 +11,7 @@ define( 'SLM_MENU_ICON', 'dashicons-lock' );
 //Includes
 require_once 'includes/slm-debug-logger.php';
 require_once 'includes/slm-error-codes.php';
+require_once 'includes/mcrpd-rate-limiter.php';
 require_once 'includes/slm-utility.php';
 require_once 'includes/slm-init-time-tasks.php';
 require_once 'includes/slm-api-utility.php';
@@ -20,6 +21,7 @@ require_once 'includes/mcrpd-project-cpt.php';
 require_once 'includes/mcrpd-project-releases.php';
 require_once 'includes/mcrpd-update-api.php';
 require_once 'includes/mcrpd-email-template.php';
+require_once 'includes/mcrpd-webhooks.php';
 
 //Include admin side only files
 if ( is_admin() ) {
@@ -46,7 +48,12 @@ add_action( 'wp_enqueue_scripts', 'mcrpd_enqueue_frontend_assets' );
 function mcrpd_enqueue_frontend_assets() {
 	if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'mcrpd-licenses' ) ) {
 		wp_enqueue_style( 'mcrpd-frontend-css', WP_LICENSE_MANAGER_URL . '/css/mcrpd-frontend.css', array(), WP_LICENSE_MANAGER_VERSION );
-		wp_enqueue_script( 'mcrpd-frontend-js', WP_LICENSE_MANAGER_URL . '/js/mcrpd-frontend.js', array(), WP_LICENSE_MANAGER_VERSION, true );
+		wp_enqueue_script( 'mcrpd-frontend-js', WP_LICENSE_MANAGER_URL . '/js/mcrpd-frontend.js', array( 'jquery' ), WP_LICENSE_MANAGER_VERSION, true );
+		wp_localize_script( 'mcrpd-frontend-js', 'mcrpd_front', array(
+			'ajax_url'           => admin_url( 'admin-ajax.php' ),
+			'confirm_deactivate' => __( 'Are you sure you want to deactivate this domain/device?', 'slm' ),
+			'deactivating'       => __( 'Deactivating...', 'slm' ),
+		) );
 	}
 }
 
@@ -60,12 +67,12 @@ function mcrpd_enqueue_admin_assets( $hook ) {
 	
 	wp_enqueue_script( 'mcrpd-admin-js', WP_LICENSE_MANAGER_URL . '/js/mcrpd-admin.js', array( 'jquery' ), WP_LICENSE_MANAGER_VERSION, true );
 	wp_localize_script( 'mcrpd-admin-js', 'slm_admin_data', array(
-		'confirm_remove_domain' => __( 'Are you sure you want to remove this domain?', 'slm' ),
+		'confirm_remove_domain' => __( 'Are you sure you want to remove this domain/device?', 'slm' ),
 		'confirm_bulk_op'       => __( 'Are you sure you want to perform this bulk operation on the selected entries?', 'slm' ),
 		'msg_loading'           => __( 'Loading...', 'slm' ),
 		'msg_deleted'           => __( 'Deleted', 'slm' ),
 		'msg_failed'            => __( 'Failed', 'slm' ),
-		'msg_no_domains'        => __( 'No domains activated.', 'slm' )
+		'msg_no_domains'        => __( 'No domains or devices activated.', 'slm' )
 	));
 }
 
@@ -132,5 +139,82 @@ function slm_del_reg_dom() {
 	$out['status'] = 'success';
         $out = apply_filters( 'slm_registered_domain_delete_response', $out );
   
+	wp_send_json( $out );
+}
+
+add_action( 'wp_ajax_mcrpd_deactivate_domain', 'mcrpd_frontend_deactivate_domain' );
+function mcrpd_frontend_deactivate_domain() {
+	$out = array( 'status' => 'fail', 'message' => __( 'Deactivation failed.', 'slm' ) );
+
+	if ( ! is_user_logged_in() ) {
+		$out['message'] = __( 'You must be logged in to perform this action.', 'slm' );
+		wp_send_json( $out );
+	}
+
+	$lic_id    = filter_input( INPUT_POST, 'lic_id', FILTER_SANITIZE_NUMBER_INT, FILTER_VALIDATE_INT );
+	$domain_id = filter_input( INPUT_POST, 'domain_id', FILTER_SANITIZE_NUMBER_INT, FILTER_VALIDATE_INT );
+	$nonce     = isset( $_POST['nonce'] ) ? sanitize_text_field( $_POST['nonce'] ) : '';
+
+	if ( empty( $lic_id ) || empty( $domain_id ) || empty( $nonce ) ) {
+		$out['message'] = __( 'Invalid request parameters.', 'slm' );
+		wp_send_json( $out );
+	}
+
+	if ( ! wp_verify_nonce( $nonce, sprintf( 'mcrpd_deactivate_domain_%s_%s', $lic_id, $domain_id ) ) ) {
+		$out['message'] = __( 'Security check failed.', 'slm' );
+		wp_send_json( $out );
+	}
+
+	global $wpdb;
+	$lk_table  = SLM_TBL_LICENSE_KEYS;
+	$reg_table = SLM_TBL_LIC_DOMAIN;
+
+	$current_user = wp_get_current_user();
+	$user_id      = $current_user->ID;
+	$user_email   = $current_user->user_email;
+
+	$license = $wpdb->get_row( $wpdb->prepare(
+		"SELECT * FROM $lk_table WHERE id = %d AND (user_ref = %s OR email = %s)",
+		$lic_id,
+		$user_id,
+		$user_email
+	), OBJECT );
+
+	if ( ! $license ) {
+		$out['message'] = __( 'You do not have permission to modify this license.', 'slm' );
+		wp_send_json( $out );
+	}
+
+	$domain_row = $wpdb->get_row( $wpdb->prepare(
+		"SELECT * FROM $reg_table WHERE id = %d AND lic_key_id = %d",
+		$domain_id,
+		$lic_id
+	), OBJECT );
+
+	if ( ! $domain_row ) {
+		$out['message'] = __( 'Domain/device not found for this license.', 'slm' );
+		wp_send_json( $out );
+	}
+
+	do_action( 'slm_before_registered_domain_delete', $domain_id );
+
+	$delete = $wpdb->delete( $reg_table, array( 'id' => $domain_id ) );
+
+	if ( $delete === false ) {
+		$out['message'] = __( 'Database deletion error.', 'slm' );
+		wp_send_json( $out );
+	}
+
+	$remaining_domains = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(id) FROM $reg_table WHERE lic_key_id = %d", $lic_id ) );
+	if ( $remaining_domains == 0 ) {
+		if ( $license->lic_status !== 'expired' ) {
+			$wpdb->update( $lk_table, array( 'lic_status' => 'pending' ), array( 'id' => $lic_id ) );
+		}
+	}
+
+	do_action( 'mcrpd_frontend_domain_deactivated', $domain_id, $lic_id, $user_id );
+
+	$out['status']  = 'success';
+	$out['message'] = __( 'Domain/device deactivated successfully.', 'slm' );
 	wp_send_json( $out );
 }

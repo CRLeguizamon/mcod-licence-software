@@ -64,7 +64,7 @@ function mcrpd_wc_subscription_status_changed_listener( $subscription, $new_stat
 						'txn_id'              => $sub_id,
 						'max_allowed_domains' => $domains,
 						'date_created'        => date( 'Y-m-d' ),
-						'date_renewed'        => $date_expiry ? date( 'Y-m-d', strtotime( '-1 day', strtotime( $date_expiry ) ) ) : '',
+						'date_renewed'        => $date_expiry,
 						'date_expiry'         => $date_expiry,
 						'product_ref'         => $project_id,
 						'subscr_id'           => $sub_id,
@@ -154,7 +154,7 @@ function mcrpd_wc_subscription_renewal( $subscription, $last_order ) {
 			$lk_table, 
 			array( 
 				'date_expiry'  => $date_expiry,
-				'date_renewed' => $date_expiry ? date( 'Y-m-d', strtotime( '-1 day', strtotime( $date_expiry ) ) ) : '',
+				'date_renewed' => $date_expiry,
 				'lic_status'   => 'active'
 			), 
 			array( 'subscr_id' => $sub_id ) 
@@ -228,3 +228,80 @@ function mcrpd_wc_send_email_notification( $type, $subscription, $keys, $item, $
 	
 	wp_mail( $subscription->get_billing_email(), wp_unslash( $subject ), $html_body, $headers );
 }
+
+/**
+ * Handle WooCommerce refunds: blocks license keys and cancels subscriptions if fully refunded.
+ */
+add_action( 'woocommerce_order_refunded', 'mcrpd_wc_handle_refund', 10, 2 );
+function mcrpd_wc_handle_refund( $order_id, $refund_id ) {
+	global $wpdb;
+
+	$order = wc_get_order( $order_id );
+	if ( ! $order ) {
+		return;
+	}
+
+	// Only act if the order is fully refunded (remaining refund amount is 0 or less)
+	if ( $order->get_remaining_refund_amount() > 0 ) {
+		return;
+	}
+
+	$lk_table = SLM_TBL_LICENSE_KEYS;
+
+	// Find subscriptions associated with this order
+	$sub_ids = array();
+	if ( function_exists( 'wcs_get_subscriptions_for_order' ) ) {
+		$subscriptions = wcs_get_subscriptions_for_order( $order_id, array( 'order_type' => 'any' ) );
+		foreach ( $subscriptions as $subscription ) {
+			$sub_ids[] = $subscription->get_id();
+		}
+	}
+
+	// Build query to find licenses
+	if ( ! empty( $sub_ids ) ) {
+		$placeholders = implode( ',', array_fill( 0, count( $sub_ids ), '%d' ) );
+		$sql = $wpdb->prepare(
+			"SELECT id, license_key, subscr_id FROM $lk_table WHERE txn_id = %d OR subscr_id IN ($placeholders)",
+			array_merge( array( $order_id ), $sub_ids ) // Correct format for prepare
+		);
+	} else {
+		$sql = $wpdb->prepare( "SELECT id, license_key, subscr_id FROM $lk_table WHERE txn_id = %d", $order_id );
+	}
+
+	$licenses = $wpdb->get_results( $sql, OBJECT );
+
+	if ( empty( $licenses ) ) {
+		return;
+	}
+
+	$blocked_keys = array();
+
+	foreach ( $licenses as $license ) {
+		// Update license status to blocked
+		$wpdb->update(
+			$lk_table,
+			array( 'lic_status' => 'blocked' ),
+			array( 'id' => $license->id )
+		);
+
+		$blocked_keys[] = $license->license_key;
+
+		// Trigger custom action hook so webhooks can fire
+		do_action( 'mcrpd_wc_license_refunded', $license->id, $order_id );
+
+		// If the license is linked to a subscription, cancel it
+		if ( ! empty( $license->subscr_id ) && function_exists( 'wcs_get_subscription' ) ) {
+			$subscription = wcs_get_subscription( $license->subscr_id );
+			if ( $subscription && $subscription->has_status( array( 'active', 'on-hold', 'pending' ) ) ) {
+				$subscription->update_status( 'cancelled', __( 'Subscription cancelled because the parent order was fully refunded.', 'slm' ) );
+			}
+		}
+	}
+
+	// Add order note
+	if ( ! empty( $blocked_keys ) ) {
+		$keys_str = implode( ', ', $blocked_keys );
+		$order->add_order_note( sprintf( __( 'Associated license keys blocked due to full refund: %s', 'slm' ), $keys_str ) );
+	}
+}
+

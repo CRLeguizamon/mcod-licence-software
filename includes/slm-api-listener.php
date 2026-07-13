@@ -13,6 +13,10 @@ class SLM_API_Listener {
 
 	function __construct() {
 
+		if ( isset( $_REQUEST['slm_action'] ) ) {
+			MCRPD_Rate_Limiter::check( SLM_Utility::get_ip_address() );
+		}
+
 		if ( isset( $_REQUEST['slm_action'] ) && isset( $_REQUEST['secret_key'] ) ) {
 
 			//Log debug
@@ -29,6 +33,8 @@ class SLM_API_Listener {
 			$this->activation_api_listener();
 			$this->deactivation_api_listener();
 			$this->check_api_listener();
+			$this->update_api_listener();
+			$this->delete_api_listener();
 		}
 	}
 
@@ -66,6 +72,7 @@ class SLM_API_Listener {
 			}
 			$fields['date_created'] = isset( $_REQUEST['date_created'] ) ? sanitize_text_field( $_REQUEST['date_created'] ) : date( 'Y-m-d' );
 			$fields['date_expiry']  = isset( $_REQUEST['date_expiry'] ) ? sanitize_text_field( $_REQUEST['date_expiry'] ) : '';
+			$fields['date_renewed'] = isset( $_REQUEST['date_renewed'] ) ? sanitize_text_field( $_REQUEST['date_renewed'] ) : $fields['date_expiry'];
 			$fields['product_ref']  = isset( $_REQUEST['product_ref'] ) ? wp_unslash( SLM_Utility::sanitize_strip_trim_slm_text( $_REQUEST['product_ref'] ) ) : '';
                         $fields['subscr_id'] = isset( $_REQUEST['subscr_id'] ) ? wp_unslash( SLM_Utility::sanitize_strip_trim_slm_text( $_REQUEST['subscr_id'] ) ) : '';
                         $fields['user_ref'] = isset( $_REQUEST['user_ref'] ) ? wp_unslash( SLM_Utility::sanitize_strip_trim_slm_text( $_REQUEST['user_ref'] ) ) : '';
@@ -156,7 +163,7 @@ class SLM_API_Listener {
 							$wpdb->update( $reg_table, array( 'registered_domain' => $fields['registered_domain'] ), array( 'registered_domain' => trim( sanitize_text_field( $_REQUEST['migrate_from'] ) ) ) );
 							$args = ( array(
 								'result'  => 'success',
-								'message' => 'Registered domain has been updated',
+								'message' => 'Registered domain/device has been updated',
 							) );
 							SLM_API_Utility::output_api_response( $args );
 						}
@@ -200,7 +207,7 @@ class SLM_API_Listener {
 					//Not used on an existing domain. Return error: REACHED_MAX_DOMAINS
 					$args = ( array(
 						'result'     => 'error',
-						'message'    => 'Reached maximum allowable domains',
+						'message'    => 'Reached maximum allowable domains/devices',
 						'error_code' => SLM_Error_Codes::REACHED_MAX_DOMAINS,
 					) );
 					SLM_API_Utility::output_api_response( $args );
@@ -231,7 +238,7 @@ class SLM_API_Listener {
 			if ( empty( $_REQUEST['registered_domain'] ) ) {
 				$args = ( array(
 					'result'     => 'error',
-					'message'    => 'Registered domain information is missing',
+					'message'    => 'Registered domain/device information is missing',
 					'error_code' => SLM_Error_Codes::DOMAIN_MISSING,
 				) );
 				SLM_API_Utility::output_api_response( $args );
@@ -249,7 +256,7 @@ class SLM_API_Listener {
 			} elseif ( $delete == 0 ) {
 				$args = ( array(
 					'result'     => 'error',
-					'message'    => 'The license key on this domain is already inactive',
+					'message'    => 'The license key on this domain/device is already inactive',
 					'error_code' => SLM_Error_Codes::DOMAIN_ALREADY_INACTIVE,
 				) );
 				SLM_API_Utility::output_api_response( $args );
@@ -331,6 +338,148 @@ class SLM_API_Listener {
 				) );
 				SLM_API_Utility::output_api_response( $args );
 			}
+		}
+	}
+
+	function update_api_listener() {
+		if ( isset( $_REQUEST['slm_action'] ) && trim( $_REQUEST['slm_action'] ) == 'slm_update' ) {
+			global $slm_debug_logger;
+
+			SLM_API_Utility::verify_secret_key_for_creation(); // Verify secret key first.
+
+			$slm_debug_logger->log_debug( 'API - license update (slm_update) request received.' );
+
+			if ( empty( $_REQUEST['license_key'] ) ) {
+				$args = array(
+					'result'     => 'error',
+					'message'    => 'License key is missing',
+					'error_code' => SLM_Error_Codes::LICENSE_INVALID,
+				);
+				SLM_API_Utility::output_api_response( $args );
+			}
+
+			$license_key = wp_unslash( SLM_Utility::sanitize_strip_trim_slm_text( $_REQUEST['license_key'] ) );
+
+			global $wpdb;
+			$tbl_name = SLM_TBL_LICENSE_KEYS;
+
+			$lic_row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $tbl_name WHERE license_key = %s", $license_key ), OBJECT );
+			if ( ! $lic_row ) {
+				$args = array(
+					'result'     => 'error',
+					'message'    => 'License key not found',
+					'error_code' => SLM_Error_Codes::KEY_NOT_FOUND,
+				);
+				SLM_API_Utility::output_api_response( $args );
+			}
+
+			$fields = array();
+
+			$updatable_fields = array(
+				'first_name'          => 'sanitize_text_field',
+				'last_name'           => 'sanitize_text_field',
+				'email'               => 'sanitize_email',
+				'company_name'        => 'sanitize_text_field',
+				'txn_id'              => 'sanitize_text_field',
+				'max_allowed_domains' => 'absint',
+				'lic_status'          => 'sanitize_text_field',
+				'date_expiry'         => 'sanitize_text_field',
+				'date_renewed'        => 'sanitize_text_field',
+				'product_ref'         => 'sanitize_text_field',
+				'subscr_id'           => 'sanitize_text_field',
+				'user_ref'            => 'sanitize_text_field',
+			);
+
+			foreach ( $updatable_fields as $field_name => $sanitize_fn ) {
+				if ( isset( $_REQUEST[ $field_name ] ) ) {
+					$raw_val = wp_unslash( $_REQUEST[ $field_name ] );
+					$fields[ $field_name ] = $sanitize_fn( $raw_val );
+				}
+			}
+
+			// Validate lic_status against allowlist if provided
+			if ( isset( $fields['lic_status'] ) ) {
+				$allowed_statuses = array( 'pending', 'active', 'blocked', 'expired' );
+				if ( ! in_array( $fields['lic_status'], $allowed_statuses, true ) ) {
+					$args = array(
+						'result'     => 'error',
+						'message'    => 'Invalid license status. Allowed: pending, active, blocked, expired',
+						'error_code' => SLM_Error_Codes::UPDATE_FAILED,
+					);
+					SLM_API_Utility::output_api_response( $args );
+				}
+			}
+
+			if ( empty( $fields ) ) {
+				$args = array(
+					'result'  => 'success',
+					'message' => 'No fields to update',
+				);
+				SLM_API_Utility::output_api_response( $args );
+			}
+
+			$result = $wpdb->update( $tbl_name, $fields, array( 'id' => $lic_row->id ) );
+
+			if ( $result === false ) {
+				$args = array(
+					'result'     => 'error',
+					'message'     => 'License update failed',
+					'error_code' => SLM_Error_Codes::UPDATE_FAILED,
+				);
+				SLM_API_Utility::output_api_response( $args );
+			} else {
+				do_action( 'slm_api_listener_slm_update', $lic_row->id, $fields );
+
+				$args = array(
+					'result'  => 'success',
+					'message' => 'License successfully updated',
+				);
+				SLM_API_Utility::output_api_response( $args );
+			}
+		}
+	}
+
+	function delete_api_listener() {
+		if ( isset( $_REQUEST['slm_action'] ) && trim( $_REQUEST['slm_action'] ) == 'slm_delete' ) {
+			global $slm_debug_logger;
+
+			SLM_API_Utility::verify_secret_key_for_creation(); // Verify secret key first.
+
+			$slm_debug_logger->log_debug( 'API - license deletion (slm_delete) request received.' );
+
+			if ( empty( $_REQUEST['license_key'] ) ) {
+				$args = array(
+					'result'     => 'error',
+					'message'    => 'License key is missing',
+					'error_code' => SLM_Error_Codes::LICENSE_INVALID,
+				);
+				SLM_API_Utility::output_api_response( $args );
+			}
+
+			$license_key = wp_unslash( SLM_Utility::sanitize_strip_trim_slm_text( $_REQUEST['license_key'] ) );
+
+			global $wpdb;
+			$tbl_name = SLM_TBL_LICENSE_KEYS;
+
+			$lic_row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $tbl_name WHERE license_key = %s", $license_key ), OBJECT );
+			if ( ! $lic_row ) {
+				$args = array(
+					'result'     => 'error',
+					'message'    => 'License key not found',
+					'error_code' => SLM_Error_Codes::KEY_NOT_FOUND,
+				);
+				SLM_API_Utility::output_api_response( $args );
+			}
+
+			SLM_Utility::delete_license_key_by_row_id( $lic_row->id );
+
+			do_action( 'slm_api_listener_slm_delete', $license_key );
+
+			$args = array(
+				'result'  => 'success',
+				'message' => 'License successfully deleted',
+			);
+			SLM_API_Utility::output_api_response( $args );
 		}
 	}
 
