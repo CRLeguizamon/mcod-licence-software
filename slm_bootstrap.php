@@ -1,7 +1,7 @@
 <?php
 /*
- * Plugin Name: Software License Manager
- * Description: Software license management solution for your web applications (WordPress plugins, Themes, PHP based membership script etc.)
+ * Plugin Name: MCOD Software License Manager
+ * Description: MCOD Software license management solution for your web applications (WordPress plugins, Themes, PHP based membership script etc.)
  * Version: 1.1.1
  * Author: crleguizamon
  * Author URI: https://mcodform.com/

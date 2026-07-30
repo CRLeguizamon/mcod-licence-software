@@ -160,7 +160,7 @@ function mcrpd_wc_render_license_detail( $license ) {
 	echo '</div>';
 	
 	echo '<div class="mcrpd-license-info-grid">';
-	echo '<div><strong>' . __( 'Activated Domains / Devices', 'slm' ) . '</strong><br>' . $domain_count . ' / ' . esc_html( $license->max_allowed_domains ) . '</div>';
+	echo '<div><strong>' . __( 'Activated Domains', 'slm' ) . '</strong><br>' . $domain_count . ' / ' . esc_html( $license->max_allowed_domains ) . '</div>';
 	echo '<div><strong>' . __( 'Creation Date', 'slm' ) . '</strong><br>' . esc_html( $created ) . '</div>';
 	echo '<div><strong>' . __( 'Expiration Date', 'slm' ) . '</strong><br>' . esc_html( $expiry ) . '</div>';
 	if ( ! empty( $license->subscr_id ) ) {
@@ -171,7 +171,7 @@ function mcrpd_wc_render_license_detail( $license ) {
 	
 	if ( $domain_count > 0 ) {
 		echo '<div class="mcrpd-license-domains">';
-		echo '<h4>' . __( 'Registered Domains / Devices', 'slm' ) . '</h4>';
+		echo '<h4>' . __( 'Registered Domains', 'slm' ) . '</h4>';
 		echo '<ul>';
 		foreach ( $domains as $dom ) {
 			$nonce = wp_create_nonce( sprintf( 'mcrpd_deactivate_domain_%s_%s', $license->id, $dom->id ) );

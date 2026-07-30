@@ -175,8 +175,8 @@ function wp_lic_mgr_add_licenses_menu() {
 					</tr>
 
 					<tr valign="top">
-						<th scope="row">Maximum Allowed Domains / Devices</th>
-						<td><input name="max_allowed_domains" type="text" id="max_allowed_domains" value="<?php echo esc_attr( $max_domains ); ?>" size="5" /><br/>Number of domains, installs, or devices in which this license can be used.</td>
+						<th scope="row">Maximum Allowed Domains</th>
+						<td><input name="max_allowed_domains" type="text" id="max_allowed_domains" value="<?php echo esc_attr( $max_domains ); ?>" size="5" /><br/>Number of domains/installs in which this license can be used.</td>
 					</tr>
 
 					<tr valign="top">
@@ -198,7 +198,7 @@ function wp_lic_mgr_add_licenses_menu() {
 						$reg_domains = $wpdb->get_results( $sql_prep, OBJECT );
 						?>
 						<tr valign="top">
-							<th scope="row">Registered Domains / Devices</th>
+							<th scope="row">Registered Domains</th>
 							<td>
 								<?php if ( count( $reg_domains ) > 0 ) { ?>
 									<div id="reg_del_msg" style="display: none;"></div>
@@ -206,7 +206,7 @@ function wp_lic_mgr_add_licenses_menu() {
 										<table cellpadding="0" cellspacing="0" class="domain-license-table">
 											<?php
 											$count = 0;
-											$tpl   = '<a class="slm-remove-domain-btn del" data-domain-id="%s" data-nonce="%s" data-lic-id="' . $id . '" title="' . __( 'Delete domain/device', 'slm' ) . '" href="#">&times;</a>';
+											$tpl   = '<a class="slm-remove-domain-btn del" data-domain-id="%s" data-nonce="%s" data-lic-id="' . $id . '" title="' . __( 'Delete domain', 'slm' ) . '" href="#">&times;</a>';
 											foreach ( $reg_domains as $reg_domain ) :
 												?>
 												<tr <?php echo ( $count % 2 ) ? 'class="alternate"' : ''; ?>>
@@ -241,7 +241,7 @@ function wp_lic_mgr_add_licenses_menu() {
 									</div>
 									<?php
 								} else {
-									echo esc_html__( 'No domains or devices activated.', 'slm' );
+									echo esc_html__( 'No domains activated.', 'slm' );
 								}
 								?>
 							</td>

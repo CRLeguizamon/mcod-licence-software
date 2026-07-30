@@ -16,9 +16,5 @@ class SLM_Error_Codes {
 	const VERIFY_KEY_INVALID                       = 90;
 	const CREATE_KEY_INVALID                       = 100;
 	const LICENSE_IN_USE_ON_DOMAIN_AND_MAX_REACHED = 110;
-	const UPDATE_FAILED                            = 120;
-	const DELETE_FAILED                            = 130;
-	const KEY_NOT_FOUND                            = 140;
-	const RATE_LIMIT_EXCEEDED                      = 150;
 
 }

@@ -36,6 +36,14 @@ function wp_lic_mgr_manage_licenses_menu() {
 <div class="wrap slm-admin-wrap">
 	<h2>Manage Licenses
 		<a href="<?php echo esc_attr( add_query_arg( 'page', 'wp_lic_mgr_addedit', get_admin_url( null, 'admin.php' ) ) ); ?>" class="page-title-action">Add New License</a>
+		<?php
+		$export_url = add_query_arg( array( 'page' => 'slm-main', 'action' => 'export_licenses' ), get_admin_url( null, 'admin.php' ) );
+		if ( ! empty( $_REQUEST['s'] ) ) {
+			$export_url = add_query_arg( 's', sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ), $export_url );
+		}
+		$export_url = wp_nonce_url( $export_url, 'slm_export_licenses' );
+		?>
+		<a href="<?php echo esc_attr( $export_url ); ?>" class="page-title-action">Export to CSV</a>
 	</h2>
 	<div id="poststuff">
 		<div id="post-body">

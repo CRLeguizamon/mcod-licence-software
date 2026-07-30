@@ -163,7 +163,7 @@ class SLM_API_Listener {
 							$wpdb->update( $reg_table, array( 'registered_domain' => $fields['registered_domain'] ), array( 'registered_domain' => trim( sanitize_text_field( $_REQUEST['migrate_from'] ) ) ) );
 							$args = ( array(
 								'result'  => 'success',
-								'message' => 'Registered domain/device has been updated',
+								'message' => 'Registered domain has been updated',
 							) );
 							SLM_API_Utility::output_api_response( $args );
 						}
@@ -207,7 +207,7 @@ class SLM_API_Listener {
 					//Not used on an existing domain. Return error: REACHED_MAX_DOMAINS
 					$args = ( array(
 						'result'     => 'error',
-						'message'    => 'Reached maximum allowable domains/devices',
+						'message'    => 'Reached maximum allowable domains',
 						'error_code' => SLM_Error_Codes::REACHED_MAX_DOMAINS,
 					) );
 					SLM_API_Utility::output_api_response( $args );
@@ -238,7 +238,7 @@ class SLM_API_Listener {
 			if ( empty( $_REQUEST['registered_domain'] ) ) {
 				$args = ( array(
 					'result'     => 'error',
-					'message'    => 'Registered domain/device information is missing',
+					'message'    => 'Registered domain information is missing',
 					'error_code' => SLM_Error_Codes::DOMAIN_MISSING,
 				) );
 				SLM_API_Utility::output_api_response( $args );
@@ -256,7 +256,7 @@ class SLM_API_Listener {
 			} elseif ( $delete == 0 ) {
 				$args = ( array(
 					'result'     => 'error',
-					'message'    => 'The license key on this domain/device is already inactive',
+					'message'    => 'The license key on this domain is already inactive',
 					'error_code' => SLM_Error_Codes::DOMAIN_ALREADY_INACTIVE,
 				) );
 				SLM_API_Utility::output_api_response( $args );

@@ -78,8 +78,8 @@ function mcrpd_wc_subscription_license_panel() {
 
 	woocommerce_wp_text_input( array(
 		'id'          => '_mcrpd_license_domains',
-		'label'       => __( 'Amount of Domains / Devices', 'slm' ),
-		'description' => __( 'Number of domains or devices allowed for this license.', 'slm' ),
+		'label'       => __( 'Amount of Domains', 'slm' ),
+		'description' => __( 'Number of domains allowed for this license.', 'slm' ),
 		'type'        => 'number',
 		'value'       => $license_domains,
 		'desc_tip'    => true,
@@ -163,7 +163,7 @@ function mcrpd_wc_variation_license_fields( $loop, $variation_data, $variation )
 	woocommerce_wp_text_input( array(
 		'id'            => "_mcrpd_license_domains[{$loop}]",
 		'wrapper_class' => 'form-row form-row-full',
-		'label'         => __( 'Amount of Domains / Devices', 'slm' ),
+		'label'         => __( 'Amount of Domains', 'slm' ),
 		'type'          => 'number',
 		'value'         => $license_domains,
 	) );

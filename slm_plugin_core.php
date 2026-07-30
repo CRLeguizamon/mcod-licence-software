@@ -51,7 +51,7 @@ function mcrpd_enqueue_frontend_assets() {
 		wp_enqueue_script( 'mcrpd-frontend-js', WP_LICENSE_MANAGER_URL . '/js/mcrpd-frontend.js', array( 'jquery' ), WP_LICENSE_MANAGER_VERSION, true );
 		wp_localize_script( 'mcrpd-frontend-js', 'mcrpd_front', array(
 			'ajax_url'           => admin_url( 'admin-ajax.php' ),
-			'confirm_deactivate' => __( 'Are you sure you want to deactivate this domain/device?', 'slm' ),
+			'confirm_deactivate' => __( 'Are you sure you want to deactivate this domain?', 'slm' ),
 			'deactivating'       => __( 'Deactivating...', 'slm' ),
 		) );
 	}
@@ -67,12 +67,12 @@ function mcrpd_enqueue_admin_assets( $hook ) {
 	
 	wp_enqueue_script( 'mcrpd-admin-js', WP_LICENSE_MANAGER_URL . '/js/mcrpd-admin.js', array( 'jquery' ), WP_LICENSE_MANAGER_VERSION, true );
 	wp_localize_script( 'mcrpd-admin-js', 'slm_admin_data', array(
-		'confirm_remove_domain' => __( 'Are you sure you want to remove this domain/device?', 'slm' ),
+		'confirm_remove_domain' => __( 'Are you sure you want to remove this domain?', 'slm' ),
 		'confirm_bulk_op'       => __( 'Are you sure you want to perform this bulk operation on the selected entries?', 'slm' ),
 		'msg_loading'           => __( 'Loading...', 'slm' ),
 		'msg_deleted'           => __( 'Deleted', 'slm' ),
 		'msg_failed'            => __( 'Failed', 'slm' ),
-		'msg_no_domains'        => __( 'No domains or devices activated.', 'slm' )
+		'msg_no_domains'        => __( 'No domains activated.', 'slm' )
 	));
 }
 
@@ -192,7 +192,7 @@ function mcrpd_frontend_deactivate_domain() {
 	), OBJECT );
 
 	if ( ! $domain_row ) {
-		$out['message'] = __( 'Domain/device not found for this license.', 'slm' );
+		$out['message'] = __( 'Domain not found for this license.', 'slm' );
 		wp_send_json( $out );
 	}
 
@@ -215,6 +215,6 @@ function mcrpd_frontend_deactivate_domain() {
 	do_action( 'mcrpd_frontend_domain_deactivated', $domain_id, $lic_id, $user_id );
 
 	$out['status']  = 'success';
-	$out['message'] = __( 'Domain/device deactivated successfully.', 'slm' );
+	$out['message'] = __( 'Domain deactivated successfully.', 'slm' );
 	wp_send_json( $out );
 }
